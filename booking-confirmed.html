@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://mhoustvvwmwfovocwwna.supabase.co;"/>
+<meta name="referrer" content="strict-origin-when-cross-origin"/>
+<title>SPACECO | Booking Confirmed</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@100..900&family=JetBrains+Mono:wght@100..900&display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          background: "#fbf9f8", "on-background": "#1b1c1c", surface: "#fbf9f8",
+          "surface-container": "#efeded", "on-surface-variant": "#444748", primary: "#000000",
+          secondary: "#775a19", "secondary-container": "#fed488", "on-secondary-container": "#785a1a",
+          "outline-variant": "#c4c7c7", error: "#ba1a1a",
+        },
+        fontFamily: {
+          "label-mono": ["JetBrains Mono"], "body-lg": ["Hanken Grotesk"],
+          "headline-md": ["Hanken Grotesk"], "display-lg": ["Hanken Grotesk"],
+        },
+        fontSize: {
+          "label-mono": ["12px", { lineHeight: "16px", letterSpacing: "0.05em", fontWeight: "500" }],
+          "body-lg": ["18px", { lineHeight: "28px", fontWeight: "400" }],
+          "headline-md": ["22px", { lineHeight: "30px", fontWeight: "600" }],
+          "display-lg": ["36px", { lineHeight: "44px", letterSpacing: "-0.02em", fontWeight: "700" }],
+        },
+        spacing: { "margin-mobile": "24px", "stack-md": "24px", "stack-lg": "48px" },
+        borderRadius: { DEFAULT: "0px" },
+      },
+    },
+  };
+</script>
+<style>
+  body { font-family: 'Hanken Grotesk', sans-serif; }
+  .bracket-tl { border-top: 2px solid #000; border-left: 2px solid #000; }
+  .bracket-tr { border-top: 2px solid #000; border-right: 2px solid #000; }
+  .bracket-bl { border-bottom: 2px solid #000; border-left: 2px solid #000; }
+  .bracket-br { border-bottom: 2px solid #000; border-right: 2px solid #000; }
+</style>
+</head>
+<body class="bg-background text-on-background min-h-screen">
+
+<header class="w-full sticky top-0 bg-background border-b border-outline-variant flex justify-between items-center px-margin-mobile py-4 z-40">
+  <h1 class="font-display-lg tracking-tighter text-primary" style="font-size:28px;">SPACECO</h1>
+</header>
+
+<main class="max-w-xl mx-auto px-margin-mobile pt-stack-lg pb-32 text-center">
+  <div class="relative inline-block p-8 mb-stack-lg">
+    <div class="absolute top-0 left-0 w-6 h-6 bracket-tl"></div>
+    <div class="absolute top-0 right-0 w-6 h-6 bracket-tr"></div>
+    <div class="absolute bottom-0 left-0 w-6 h-6 bracket-bl"></div>
+    <div class="absolute bottom-0 right-0 w-6 h-6 bracket-br"></div>
+    <span class="font-label-mono text-label-mono uppercase text-secondary">Request Received</span>
+  </div>
+
+  <h1 class="font-display-lg text-primary mb-4">Booking Confirmed</h1>
+  <p class="mb-stack-lg">We've saved your reservation request. Staff will confirm it before your visit.</p>
+
+  <div class="bg-surface border border-outline-variant p-6 text-left mb-stack-lg">
+    <p class="font-label-mono text-label-mono uppercase text-on-surface-variant mb-1">Booking ID</p>
+    <p id="booking-id" class="font-headline-md text-primary mb-4"></p>
+    <p id="booking-details" class="font-body-lg"></p>
+  </div>
+
+  <a href="select-room.html" class="inline-block bg-primary text-white py-4 px-8 font-headline-md font-bold uppercase tracking-widest hover:opacity-90">Book Another Room</a>
+</main>
+
+<script src="js/booking.js"></script>
+<script>
+  const draft = loadBookingDraft();
+  if (!draft || !draft.booked) {
+    window.location.href = "select-room.html";
+  } else {
+    function formatHour(t) {
+      const [h] = t.split(":").map(Number);
+      const period = h >= 12 ? "PM" : "AM";
+      const hour12 = h % 12 === 0 ? 12 : h % 12;
+      return `${hour12}:00 ${period}`;
+    }
+    // Guests have no reservation ID to show back (RLS won't let them read the row we just
+    // inserted -- by design, guests can't read arbitrary reservation data). Staff can still
+    // look their booking up by name/phone.
+    document.getElementById("booking-id").textContent = draft.reservationId
+      ? `#SC-RESV-${draft.reservationId}`
+      : "Ask staff to look this up by name/phone if needed";
+    document.getElementById("booking-details").textContent =
+      `${draft.roomLabel} — ${draft.date}, ${formatHour(draft.timeIn)} to ${formatHour(draft.timeOut)}`;
+    clearBookingDraft();
+  }
+</script>
+</body>
+</html>

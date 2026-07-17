@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://mhoustvvwmwfovocwwna.supabase.co;"/>
+<meta name="referrer" content="strict-origin-when-cross-origin"/>
+<title>SPACECO | Select Time</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@100..900&family=JetBrains+Mono:wght@100..900&display=swap" rel="stylesheet"/>
+<script src="js/vendor/supabase-js.umd.js"></script>
+<script id="tailwind-config">
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          background: "#fbf9f8", "on-background": "#1b1c1c", surface: "#fbf9f8",
+          "surface-container": "#efeded", "on-surface-variant": "#444748", primary: "#000000",
+          secondary: "#775a19", "secondary-container": "#fed488", "on-secondary-container": "#785a1a",
+          "outline-variant": "#c4c7c7", error: "#ba1a1a",
+        },
+        fontFamily: {
+          "label-mono": ["JetBrains Mono"], "body-lg": ["Hanken Grotesk"], "body-md": ["Hanken Grotesk"],
+          "headline-lg": ["Hanken Grotesk"], "headline-md": ["Hanken Grotesk"], "display-lg": ["Hanken Grotesk"],
+        },
+        fontSize: {
+          "label-mono": ["12px", { lineHeight: "16px", letterSpacing: "0.05em", fontWeight: "500" }],
+          "body-lg": ["18px", { lineHeight: "28px", fontWeight: "400" }],
+          "headline-lg": ["30px", { lineHeight: "38px", letterSpacing: "-0.01em", fontWeight: "600" }],
+          "headline-md": ["22px", { lineHeight: "30px", fontWeight: "600" }],
+          "display-lg": ["36px", { lineHeight: "44px", letterSpacing: "-0.02em", fontWeight: "700" }],
+        },
+        spacing: { "margin-mobile": "24px", "stack-md": "24px", "stack-lg": "48px" },
+        borderRadius: { DEFAULT: "0px" },
+      },
+    },
+  };
+</script>
+<style>
+  body { font-family: 'Hanken Grotesk', sans-serif; }
+</style>
+</head>
+<body class="bg-background text-on-background min-h-screen">
+
+<header class="w-full sticky top-0 bg-background border-b border-outline-variant flex justify-between items-center px-margin-mobile py-4 z-40">
+  <h1 class="font-display-lg tracking-tighter text-primary" style="font-size:28px;">SPACECO</h1>
+  <a href="select-room.html" class="font-label-mono text-label-mono text-on-surface-variant uppercase hover:text-primary">Change Room</a>
+</header>
+
+<main class="max-w-3xl mx-auto px-margin-mobile pt-stack-lg pb-32">
+  <span class="font-label-mono text-label-mono uppercase text-secondary mb-2 block" id="room-label"></span>
+  <h1 class="font-display-lg text-primary mb-stack-lg">Pick a Time</h1>
+
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-stack-lg">
+    <div>
+      <label class="font-label-mono text-label-mono uppercase block mb-2" for="date-input">Date</label>
+      <input class="w-full bg-surface-container border-b-2 border-primary py-3 px-3 focus:ring-0 focus:outline-none font-body-lg" id="date-input" type="date"/>
+    </div>
+    <div>
+      <label class="font-label-mono text-label-mono uppercase block mb-2" for="duration-input">Duration</label>
+      <select class="w-full bg-surface-container border-b-2 border-primary py-3 px-3 focus:ring-0 focus:outline-none font-body-lg" id="duration-input">
+        <option value="1">1 hour</option>
+        <option value="2">2 hours</option>
+        <option value="3">3 hours</option>
+        <option value="4">4 hours</option>
+        <option value="6">6 hours</option>
+        <option value="8">8 hours</option>
+      </select>
+    </div>
+  </div>
+
+  <p id="slots-status" class="font-label-mono text-label-mono uppercase text-on-surface-variant mb-4">Pick a date to see available times.</p>
+  <div id="slots-grid" class="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-stack-lg"></div>
+
+  <p id="selection-summary" class="hidden font-label-mono text-label-mono uppercase text-secondary mb-4"></p>
+  <button id="continue-btn" class="hidden w-full bg-primary text-white py-4 font-headline-md font-bold uppercase tracking-widest hover:opacity-90">Continue to Booking</button>
+</main>
+
+<script src="js/supabase-client.js"></script>
+<script src="js/booking.js"></script>
+<script>
+  const supabaseClient = window.getSpacecoClient();
+  const draft = loadBookingDraft();
+  if (!draft || !draft.roomKey) {
+    window.location.href = "select-room.html";
+  }
+
+  document.getElementById("room-label").textContent = draft.roomLabel;
+
+  let selectedSlot = null;
+
+  function todayLocal() {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  }
+
+  const dateInput = document.getElementById("date-input");
+  const durationInput = document.getElementById("duration-input");
+  dateInput.min = todayLocal();
+  dateInput.value = todayLocal();
+
+  function formatHour(t) {
+    const [h] = t.split(":").map(Number);
+    const period = h >= 12 ? "PM" : "AM";
+    const hour12 = h % 12 === 0 ? 12 : h % 12;
+    return `${hour12}:00 ${period}`;
+  }
+
+  async function refreshSlots() {
+    selectedSlot = null;
+    document.getElementById("selection-summary").classList.add("hidden");
+    document.getElementById("continue-btn").classList.add("hidden");
+
+    const date = dateInput.value;
+    const duration = Number(durationInput.value);
+    if (!date) return;
+
+    const statusEl = document.getElementById("slots-status");
+    statusEl.textContent = "Checking availability...";
+    const grid = document.getElementById("slots-grid");
+    grid.innerHTML = "";
+
+    const result = await getBusyPeriods(supabaseClient, draft.roomKey, date);
+    if (result.error) {
+      statusEl.textContent = "Could not load availability: " + result.error;
+      return;
+    }
+
+    const slots = buildSlotOptions(result.periods, duration);
+    statusEl.textContent = "Tap a time to select it.";
+
+    slots.forEach(slot => {
+      const btn = document.createElement("button");
+      btn.className = slot.blocked
+        ? "border border-outline-variant bg-surface-container text-on-surface-variant py-3 font-label-mono text-label-mono uppercase line-through cursor-not-allowed"
+        : "border border-outline-variant bg-surface py-3 font-label-mono text-label-mono uppercase hover:border-primary";
+      btn.textContent = formatHour(slot.startTime);
+      btn.disabled = slot.blocked;
+      btn.addEventListener("click", () => {
+        selectedSlot = slot;
+        document.querySelectorAll("#slots-grid > button").forEach(b => b.classList.remove("border-primary", "bg-secondary-container"));
+        btn.classList.add("border-primary", "bg-secondary-container");
+        const summary = document.getElementById("selection-summary");
+        summary.textContent = `${date} — ${formatHour(slot.startTime)} to ${formatHour(slot.endTime)}`;
+        summary.classList.remove("hidden");
+        document.getElementById("continue-btn").classList.remove("hidden");
+      });
+      grid.appendChild(btn);
+    });
+  }
+
+  dateInput.addEventListener("change", refreshSlots);
+  durationInput.addEventListener("change", refreshSlots);
+
+  document.getElementById("continue-btn").addEventListener("click", () => {
+    if (!selectedSlot) return;
+    saveBookingDraft({
+      ...draft,
+      date: dateInput.value,
+      timeIn: selectedSlot.startTime,
+      timeOut: selectedSlot.endTime,
+    });
+    window.location.href = "booking-details.html";
+  });
+
+  refreshSlots();
+</script>
+</body>
+</html>
