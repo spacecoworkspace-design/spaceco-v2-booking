@@ -50,7 +50,13 @@
   <span class="font-label-mono text-label-mono uppercase text-secondary mb-2 block">Reservations</span>
   <h1 class="font-display-lg text-primary mb-stack-lg">My Bookings</h1>
 
-  <div id="loading-state" class="font-label-mono text-label-mono uppercase text-on-surface-variant">Loading...</div>
+  <div id="loading-state" class="animate-pulse">
+    <div class="space-y-3">
+      <div class="h-16 bg-surface-container"></div>
+      <div class="h-16 bg-surface-container"></div>
+      <div class="h-16 bg-surface-container"></div>
+    </div>
+  </div>
 
   <div id="signed-out-state" class="hidden">
     <p class="mb-4">Sign in to see your bookings.</p>
